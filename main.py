@@ -2,22 +2,27 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import pandas as pd
-
-API_KEY = "855647b8d4ec4d6da6de98ee2c9368e5"
+import os
 
 app = FastAPI()
 
-# Allow React frontend access (for local or deployed app)
+# Enable CORS (for React frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Use ["http://localhost:3000"] for React dev
+    allow_origins=["*"],  # Change this to your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -- Your original model logic reused here --
+# Get API key from environment
+API_KEY = os.getenv("API_KEY")
+
+# News fetching logic
 def fetch_news():
+    if not API_KEY:
+        raise ValueError("❌ API_KEY is missing in environment variables.")
+
     url = (
         f"https://newsapi.org/v2/everything?"
         f"q=India&"
@@ -30,8 +35,8 @@ def fetch_news():
     response = requests.get(url)
     data = response.json()
 
-    if data["status"] != "ok":
-        return pd.DataFrame()
+    if data.get("status") != "ok":
+        raise ValueError(f"NewsAPI Error: {data.get('message')}")
 
     articles = data.get("articles", [])
     if not articles:
@@ -50,7 +55,7 @@ def fetch_news():
 
     return df
 
-
+# Category tagging
 def assign_category(row):
     text = (row.get('title', '') + " " + row.get('description', '')).lower()
 
@@ -69,13 +74,18 @@ def assign_category(row):
     else:
         return 'Miscellaneous'
 
-# -- Expose your logic via API endpoint --
+# API endpoint
 @app.get("/news")
 def get_categorized_news():
-    df = fetch_news()
+    try:
+        df = fetch_news()
 
-    if df.empty:
-        return {"news": []}
+        if df.empty:
+            return {"news": []}
 
-    df['category'] = df.apply(assign_category, axis=1)
-    return {"news": df.to_dict(orient="records")}
+        df['category'] = df.apply(assign_category, axis=1)
+        return {"news": df.to_dict(orient="records")}
+
+    except Exception as e:
+        print("❌ Server Error:", str(e))
+        return {"error": "Internal Server Error", "details": str(e)}
