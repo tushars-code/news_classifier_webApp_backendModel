@@ -20,8 +20,9 @@ API_KEY = os.getenv("API_KEY")
 
 # News fetching logic
 def fetch_news():
+    API_KEY = os.getenv("API_KEY")
     if not API_KEY:
-        raise ValueError("❌ API_KEY is missing in environment variables.")
+        raise Exception("❌ API_KEY not found in environment.")
 
     url = (
         f"https://newsapi.org/v2/everything?"
@@ -33,27 +34,34 @@ def fetch_news():
     )
 
     response = requests.get(url)
-    data = response.json()
+
+    print("🌐 HTTP Status Code:", response.status_code)
+    print("📝 Raw Response Text:", response.text[:300])  # print first 300 chars only
+
+    # Fail early if bad response
+    if response.status_code != 200:
+        raise Exception(f"❌ NewsAPI error {response.status_code}: {response.text}")
+
+    try:
+        data = response.json()
+    except Exception as e:
+        raise Exception("❌ Failed to decode JSON from NewsAPI.") from e
 
     if data.get("status") != "ok":
-        raise ValueError(f"NewsAPI Error: {data.get('message')}")
+        raise Exception(f"❌ NewsAPI returned status: {data.get('status')}")
 
     articles = data.get("articles", [])
     if not articles:
+        print("⚠️ No articles found.")
         return pd.DataFrame()
 
     df = pd.DataFrame(articles)
     expected_columns = ['title', 'description', 'url']
-    available_columns = [col for col in expected_columns if col in df.columns]
-
-    if not available_columns:
-        return pd.DataFrame()
-
-    df = df[available_columns]
+    df = df[[col for col in expected_columns if col in df.columns]]
     df.dropna(inplace=True)
     df.reset_index(drop=True, inplace=True)
-
     return df
+
 
 # Category tagging
 def assign_category(row):
