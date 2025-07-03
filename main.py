@@ -1,28 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import requests
 import pandas as pd
-import os
 
 app = FastAPI()
 
-# Enable CORS (for React frontend)
+# Enable CORS (allow all origins - change in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to your frontend URL in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Get API key from environment
-API_KEY = os.getenv("API_KEY")
+# 🔐 Hardcoded API Key (⚠️ only for testing)
+API_KEY = "855647b8d4ec4d6da6de98ee2c9368e5"
 
-# News fetching logic
+# Fetch news articles
 def fetch_news():
-    API_KEY = os.getenv("API_KEY")
     if not API_KEY:
-        raise Exception("❌ API_KEY not found in environment.")
+        raise Exception("❌ API_KEY not found.")
 
     url = (
         f"https://newsapi.org/v2/everything?"
@@ -36,9 +35,8 @@ def fetch_news():
     response = requests.get(url)
 
     print("🌐 HTTP Status Code:", response.status_code)
-    print("📝 Raw Response Text:", response.text[:300])  # print first 300 chars only
+    print("📝 Raw Response Text:", response.text[:300])  # print first 300 chars
 
-    # Fail early if bad response
     if response.status_code != 200:
         raise Exception(f"❌ NewsAPI error {response.status_code}: {response.text}")
 
@@ -62,8 +60,7 @@ def fetch_news():
     df.reset_index(drop=True, inplace=True)
     return df
 
-
-# Category tagging
+# Categorize each article
 def assign_category(row):
     text = (row.get('title', '') + " " + row.get('description', '')).lower()
 
@@ -96,4 +93,7 @@ def get_categorized_news():
 
     except Exception as e:
         print("❌ Server Error:", str(e))
-        return {"error": "Internal Server Error", "details": str(e)}
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal Server Error", "details": str(e)},
+        )
