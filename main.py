@@ -61,23 +61,26 @@ def fetch_news():
     return df
 
 # Categorize each article
+
 def assign_category(row):
     text = (row.get('title', '') + " " + row.get('description', '')).lower()
 
-    if any(word in text for word in ['modi', 'election', 'bjp', 'parliament', 'congress']):
-        return 'Politics'
-    elif any(word in text for word in ['economy', 'gdp', 'inflation', 'budget', 'bank']):
-        return 'Economy'
-    elif any(word in text for word in ['ai', 'space', 'isro', 'tech', 'nasa', 'quantum']):
-        return 'Science & Tech'
-    elif any(word in text for word in ['climate', 'pollution', 'environment', 'green']):
-        return 'Environment'
-    elif any(word in text for word in ['us', 'china', 'pakistan', 'russia', 'un']):
-        return 'International Affairs'
-    elif any(word in text for word in ['governance', 'bureaucracy', 'reform']):
-        return 'Governance'
-    else:
-        return 'Miscellaneous'
+    categories = {
+        'Politics': ['modi', 'election', 'bjp', 'parliament', 'congress', 'cabinet', 'manifesto'],
+        'Economy': ['economy', 'gdp', 'inflation', 'budget', 'bank', 'fiscal', 'monetary'],
+        'Science & Tech': ['ai', 'space', 'isro', 'tech', 'nasa', 'quantum', 'startups', 'innovation'],
+        'Environment': ['climate', 'pollution', 'environment', 'green', 'sustainability', 'forest', 'wildlife'],
+        'International Affairs': ['us', 'china', 'pakistan', 'russia', 'un', 'geopolitics', 'diplomacy', 'embassy'],
+        'Governance': ['governance', 'bureaucracy', 'reform', 'policy', 'schemes', 'implementation'],
+        'Defence & Security': ['army', 'navy', 'air force', 'defence', 'terrorism', 'military'],
+        'Health': ['healthcare', 'covid', 'vaccine', 'aiims', 'medical'],
+        'Education': ['education', 'neet', 'ugc', 'schools', 'colleges', 'exam']
+    }
+
+    for category, keywords in categories.items():
+        if any(word in text for word in keywords):
+            return category
+    return 'Miscellaneous'
 
 # API endpoint
 @app.get("/news")
